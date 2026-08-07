@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 ActivationType = Literal["sigmoid", "relu", "tanh", "gelu", "leaky_relu"]
 
 
-class ApproximationConfig(BaseModel):
+class ExperimentParams(BaseModel):
     """
     Конфигурация параметров обучения и визуализации.
 
@@ -54,7 +54,7 @@ class ApproximationConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_ranges(self) -> "ApproximationConfig":
+    def validate_ranges(self) -> "ExperimentParams":
         # min должен быть меньшу max
         if self.x_vis_max <= self.x_vis_min:
             raise ValueError(
