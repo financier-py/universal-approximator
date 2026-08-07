@@ -46,7 +46,7 @@ class DataBuilder:
         val_mask = ~train_mask
 
         # на всякий пожарный
-        if np.any(train_mask):
+        if not np.any(train_mask):
             raise ValueError(
                 "В диапозон обучения каким-то образом не попала ни одна точка"
             )
