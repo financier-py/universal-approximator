@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
-from schemas.experiment_params import ExperimentParams
 from parser import FunctionEvaluator
+from schemas.experiment_params import ExperimentParams
 
 
 @dataclass(frozen=True)
