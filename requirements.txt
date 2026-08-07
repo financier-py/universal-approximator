@@ -1,0 +1,8 @@
+torch
+numpy
+sympy
+plotly
+streamlit
+matplotlib
+pillow
+pydantic
