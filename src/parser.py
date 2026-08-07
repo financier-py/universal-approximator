@@ -88,11 +88,12 @@ _ALLOWED_MATH = (
     | _MATH_CONSTANTS
 )
 
+
 class InvalidExpressionError(Exception):
     """Исключение при синтаксической ошибке в формуле"""
 
 
-class CompiledExecutable:
+class FunctionEvaluator:
     """
     Отвечает за вызов numpy-инструкции
     По сути берет скомпилированную функцию, вектор иксов
@@ -122,7 +123,7 @@ class CompiledExecutable:
 
 class ExpressionParser:
     """Парсер мат. выражений"""
-    
+
     @classmethod
     def parse(cls, expr_str: str):
         """
@@ -164,4 +165,4 @@ class ExpressionParser:
         except Exception as e:
             raise InvalidExpressionError(f"Ошибка при компиляции ф-ии :( {e}") from e
 
-        return CompiledExecutable(raw_func)
+        return FunctionEvaluator(raw_func)
