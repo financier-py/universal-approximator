@@ -3,6 +3,90 @@ from typing import Any
 import numpy as np
 import sympy as sp
 
+# ========== имена для функций тут будут ==========
+_MATH_FUNCTIONS = (
+    # знаки, корни
+    "abs",
+    "sqrt",
+    "cbrt",
+    "sign",
+    # трига
+    "sin",
+    "cos",
+    "tan",
+    "cot",
+    "sec",
+    "csc",
+    "asin",
+    "acos",
+    "atan",
+    "acot",
+    # гиперболическая трига
+    "sinh",
+    "cosh",
+    "tanh",
+    "coth",
+    "asinh",
+    "acosh",
+    "atanh",
+    # экспоненты и логарифмы
+    "exp",
+    "log",
+    "ln",
+    # ступенчатые ф-ии
+    "floor",
+    "ceiling",
+    # кака-ято фигня красивая
+    "erf",
+    "erfc",
+    "gamma",
+    "sinc",
+)
+
+# принятые обозначения в РФ
+_RU_ALIASES = {
+    # тангенс катангенс
+    "tg": sp.tan,
+    "ctg": sp.cot,
+    # арк трига
+    "arctg": sp.atan,
+    "arcctg": sp.acot,
+    "arcsin": sp.asin,
+    "arccos": sp.acos,
+    # гиперболические
+    "sh": sp.sinh,
+    "ch": sp.cosh,
+    "th": sp.tanh,
+    "cth": sp.coth,
+    # арк гиперболические
+    "arsh": sp.asinh,
+    "arch": sp.acosh,
+    "arth": sp.atanh,
+    "arcth": sp.acoth,
+    # Логарифм по умолчанию
+    "ln": sp.log,
+}
+
+_MATH_CONSTANTS = {
+    "pi": sp.pi,
+    "e": sp.E,
+    "tau": 2 * sp.pi,
+}
+
+_X_SYM = sp.Symbol("x")
+_LOG_ALIASES = {
+    "lg": sp.log(_X_SYM, 10),
+    "log10": sp.log(_X_SYM, 10),
+    "log2": sp.log(_X_SYM, 2),
+}
+
+# итоговый словарь разрешенных мат. ф-ий
+_ALLOWED_MATH = (
+    {fname: getattr(sp, fname) for fname in _MATH_FUNCTIONS if hasattr(sp, fname)}
+    | _RU_ALIASES
+    | _LOG_ALIASES
+    | _MATH_CONSTANTS
+)
 
 class InvalidExpressionError(Exception):
     """Исключение при синтаксической ошибке в формуле"""
@@ -38,68 +122,7 @@ class CompiledExecutable:
 
 class ExpressionParser:
     """Парсер мат. выражений"""
-
-    MATH_FUNCTIONS = (
-        # знаки, корни
-        "abs",
-        "sqrt",
-        "cbrt",
-        "sign",
-        # трига
-        "sin",
-        "cos",
-        "tan",
-        "cot",
-        "sec",
-        "csc",
-        "asin",
-        "acos",
-        "atan",
-        "acot",
-        # гиперболическая трига
-        "sinh",
-        "cosh",
-        "tanh",
-        "coth",
-        "asinh",
-        "acosh",
-        "atanh",
-        # экспоненты и логарифмы
-        "exp",
-        "log",
-        "ln",
-        # ступенчатые ф-ии
-        "floor",
-        "ceiling",
-        # кака-ято фигня красивая
-        "erf",
-        "erfc",
-        "gamma",
-        "sinc",
-    )
-
-    MATH_CONSTANTS = {  # noqa: RUF012
-        "pi": sp.pi,
-        "e": sp.E,
-        "tau": 2 * sp.pi,
-    }
-
-    @classmethod
-    def _get_allowed_math(cls) -> dict[str, Any]:
-        allowed = {}
-
-        for fname in cls.MATH_FUNCTIONS:
-            if hasattr(sp, fname):
-                allowed[fname] = getattr(sp, fname)
-
-        allowed["ln"] = sp.log
-        allowed["log2"] = lambda x: sp.log(x, 2)
-        allowed["log10"] = lambda x: sp.log(x, 10)
-
-        allowed.update(cls.MATH_CONSTANTS)
-
-        return allowed
-
+    
     @classmethod
     def parse(cls, expr_str: str):
         """
@@ -111,13 +134,12 @@ class ExpressionParser:
 
         cleaned_expr_str = expr_str.strip()
         x = sp.Symbol("x")
-        allowed_math = cls._get_allowed_math()
 
         # переводим в выражение
         try:
             expr = sp.sympify(
                 cleaned_expr_str,
-                locals={"x": x, **allowed_math},
+                locals={"x": x, **_ALLOWED_MATH},
                 strict=True,
             )
         except Exception as e:
