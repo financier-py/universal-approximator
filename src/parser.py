@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 import sympy as sp
+from sympy.parsing.sympy_parser import convert_xor, parse_expr, standard_transformations
 
 # ========== имена для функций тут будут ==========
 _MATH_FUNCTIONS = (
@@ -138,10 +139,11 @@ class ExpressionParser:
 
         # переводим в выражение
         try:
-            expr = sp.sympify(
+            transformations = standard_transformations + (convert_xor,)
+            expr = parse_expr(
                 cleaned_expr_str,
-                locals={"x": x, **_ALLOWED_MATH},
-                strict=True,
+                local_dict={"x": x, **_ALLOWED_MATH},
+                transformations=transformations,
             )
         except Exception as e:
             raise InvalidExpressionError(
@@ -161,7 +163,7 @@ class ExpressionParser:
 
         # компилируем
         try:
-            raw_func = sp.lambdify(x, expr, modules=["scipy", "numpy"])
+            raw_func = sp.lambdify(x, expr, modules=["numpy"])
         except Exception as e:
             raise InvalidExpressionError(f"Ошибка при компиляции ф-ии :( {e}") from e
 
