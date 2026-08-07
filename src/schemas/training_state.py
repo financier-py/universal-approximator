@@ -11,7 +11,8 @@ class EpochState(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     epoch: int = Field(..., ge=0, description="Номер текущей эпохи")
-    loss: float = Field(..., description="Текущая ошибка MSE (только на train)")
+    loss_train: float = Field(..., description="RMSE на обучающем интервале")
+    loss_val: float = Field(..., description="RMSE вне обучающего интервала")
 
     # массивы для графиков
     x_grid: np.ndarray = Field(
