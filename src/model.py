@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from activations import get_activation_function
-from schemas.experiment_params import ExperimentParams
+from src.activations import get_activation_function
+from src.schemas.experiment_params import ExperimentParams
 
 
 @dataclass(frozen=True)

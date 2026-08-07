@@ -1,6 +1,6 @@
 import torch.nn as nn  # noqa: PLR0402
 
-from schemas.experiment_params import ActivationType
+from src.schemas.experiment_params import ActivationType
 
 
 def get_activation_function(activation_type: ActivationType) -> nn.Module:

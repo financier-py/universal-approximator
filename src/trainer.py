@@ -4,10 +4,10 @@ import torch
 import torch.nn as nn  # noqa: PLR0402
 import torch.optim as optim  # noqa: PLR0402
 
-from data_builder import PreparedData
-from model import FunctionApproximationNet
-from schemas.experiment_params import ExperimentParams
-from schemas.training_state import EpochState
+from src.data_builder import PreparedData
+from src.model import FunctionApproximationNet
+from src.schemas.experiment_params import ExperimentParams
+from src.schemas.training_state import EpochState
 
 
 class Trainer:
