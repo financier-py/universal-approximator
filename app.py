@@ -5,7 +5,7 @@ from src.graphics import create_animated_figure, export_frames_to_gif
 from src.parser import ExpressionParser, InvalidExpressionError
 from src.schemas.experiment_params import ExperimentParams
 from src.schemas.training_state import EpochState
-from src.trainer import Trainer
+from nn_trainer import Trainer
 
 # НАСТРОЙКИ СТРАНИЦЫ
 st.set_page_config(
