@@ -8,6 +8,9 @@ ModelType = Literal["nn", "gdbt"]
 # допустимые ф-ии активации
 ActivationType = Literal["sigmoid", "relu", "tanh", "gelu", "leaky_relu"]
 
+# допустимые способы анимации град буста
+GBDTViewMode = Literal["current", "history"]
+
 
 class ExperimentParams(BaseModel):
     """
@@ -53,6 +56,14 @@ class ExperimentParams(BaseModel):
     # параметры ГРАД БУСТА
     n_estimators: int = Field(default=100, ge=1, le=2000, description="Кол-во деревьев")
     max_depth: int = Field(default=2, ge=1, le=2000, description="Макс. глубина дерева")
+    gdbt_view_mode: GBDTViewMode = Field(
+        default="current",
+        description=(
+            "Режим визуализации деревьев:\n"
+            "'current' - последнее дерево немасштабированное\n"
+            "'history' - накопленная сумма деревьев"
+        )
+    )
 
     # гиперпараметры обучения
     learning_rate: float = Field(
