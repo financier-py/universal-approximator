@@ -2,6 +2,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+# допустимые модели
+ModelType = Literal["nn", "gdbt"]
+
 # допустимые ф-ии активации
 ActivationType = Literal["sigmoid", "relu", "tanh", "gelu", "leaky_relu"]
 
@@ -13,6 +16,11 @@ class ExperimentParams(BaseModel):
     Тут настройки мат. функций, структуры сети,
     диапозоны для обучения и визуализации и гиперпараметры модели.
     """
+
+    # выбор алгоритма
+    model_type: ModelType = Field(
+        default="nn", description="Тип модели 'nn' - нейронка, 'ddbt' - град. буст"
+    )
 
     # мат. функция и сетка точек
     expression: str = Field(
@@ -34,13 +42,17 @@ class ExperimentParams(BaseModel):
     x_train_min: float = Field(default=-2.0, description="Мин. значение x для обучения")
     x_train_max: float = Field(default=2.0, description="Макс. значение x для обучения")
 
-    # архитектура нейросети
+    # архитектура НЕЙРОСЕТИ
     n_neurons: int = Field(
         default=10, ge=1, le=500, description="Кол-во нейронов в скрытом слое"
     )
     activation_type: ActivationType = Field(
         default="sigmoid", description="Ф-ия активации скрытого слоя"
     )
+
+    # параметры ГРАД БУСТА
+    n_estimators: int = Field(default=100, ge=1, le=2000, description="Кол-во деревьев")
+    max_depth: int = Field(default=2, ge=1, le=2000, description="Макс. глубина дерева")
 
     # гиперпараметры обучения
     learning_rate: float = Field(
