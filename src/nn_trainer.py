@@ -10,7 +10,7 @@ from src.schemas.experiment_params import ExperimentParams
 from src.schemas.training_state import EpochState
 
 
-class Trainer:
+class NNTrainer:
     """
     Движок обучения нейросети. Отдает свое состояние каждый N эпох
     """
@@ -76,12 +76,13 @@ class Trainer:
             neuron_outputs_np = full_output.neuron_outputs.cpu().numpy()
 
         return EpochState(
+            model_type="nn",
             epoch=epoch,
             loss_train=rmse_train,
             loss_val=rmse_val,
             x_grid=self.data.x_grid,
             y_target=self.data.y_target,
             y_pred=y_pred_np,
-            neuron_outputs=neuron_outputs_np,
+            element_outputs=neuron_outputs_np,
             train_mask=self.data.train_mask,
         )
