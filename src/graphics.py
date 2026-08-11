@@ -9,13 +9,13 @@ from matplotlib import animation  # type: ignore
 from src.schemas.training_state import EpochState
 
 
-# анимированный график-гифка
-def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure:
+def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.Figure:
     """Создает анимированный график как гифка"""
     if not frames_data:
         return go.Figure()
 
     first_frame = frames_data[0]
+    is_gbdt = first_frame.model_type == "gbdt"
 
     y_min_val, y_max_val = first_frame.y_target.min(), first_frame.y_target.max()
     margin = (y_max_val - y_min_val) * 0.5 + 0.5
@@ -23,13 +23,13 @@ def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure
 
     base_traces = []
 
-    for i in range(first_frame.neuron_outputs.shape[0]):
+    # линии базовых элементов (нейронов или деревьев)
+    for i in range(first_frame.element_outputs.shape[0]):
         base_traces.append(
             go.Scatter(
                 x=first_frame.x_grid,
-                y=first_frame.neuron_outputs[i],
+                y=first_frame.element_outputs[i],
                 mode="lines",
-                name=f"Нейрон {i + 1}",
                 line={"width": 1},
                 opacity=0.35,
                 showlegend=False,
@@ -46,7 +46,7 @@ def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure
         )
     )
 
-    # Train предсказание
+    # train предсказание
     y_tr_0 = np.where(first_frame.train_mask, first_frame.y_pred, np.nan)
     base_traces.append(
         go.Scatter(
@@ -58,7 +58,7 @@ def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure
         )
     )
 
-    # Val предсказание
+    # val предсказание
     if np.any(~first_frame.train_mask):
         y_val_0 = np.where(~first_frame.train_mask, first_frame.y_pred, np.nan)
         base_traces.append(
@@ -77,8 +77,8 @@ def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure
     for f_idx, frame in enumerate(frames_data):
         frame_traces = []
 
-        for i in range(frame.neuron_outputs.shape[0]):
-            frame_traces.append(go.Scatter(x=frame.x_grid, y=frame.neuron_outputs[i]))
+        for i in range(frame.element_outputs.shape[0]):
+            frame_traces.append(go.Scatter(x=frame.x_grid, y=frame.element_outputs[i]))
 
         frame_traces.append(go.Scatter(x=frame.x_grid, y=frame.y_target))
 
@@ -118,6 +118,8 @@ def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure
         annotation_position="top left",
         annotation_font={"color": "white", "size": 12},
     )
+
+    prefix_label = "Дерево: " if is_gbdt else "Эпоха: "
 
     fig.update_layout(
         title={
@@ -172,7 +174,7 @@ def create_animated_figure(frames_data: list[EpochState], duration) -> go.Figure
                 "xanchor": "left",
                 "currentvalue": {
                     "font": {"size": 16, "color": "white"},
-                    "prefix": "Эпоха: ",
+                    "prefix": prefix_label,
                     "visible": True,
                     "xanchor": "right",
                 },
@@ -195,6 +197,7 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
         return b""
 
     first_frame = frames_data[0]
+    is_gbdt = first_frame.model_type == "gbdt"
 
     plt.style.use("dark_background")
     fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
@@ -221,26 +224,30 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
         label="Целевая f(x)",
     )
 
-    neuron_lines = []
-    for i in range(first_frame.neuron_outputs.shape[0]):
-        (line_n,) = ax.plot([], [], linewidth=1, alpha=0.35)
-        neuron_lines.append(line_n)
+    # Линии базовых элементов без labels, чтобы не выводить их в легенду
+    elem_lines = []
+    for _ in range(first_frame.element_outputs.shape[0]):
+        (line_elem,) = ax.plot([], [], linewidth=1, alpha=0.35)
+        elem_lines.append(line_elem)
 
     (line_train,) = ax.plot([], [], color="#00D2FF", linewidth=3, label="Train")
     (line_val,) = ax.plot(
         [], [], color="#FF4B4B", linewidth=2, linestyle=":", label="Val"
     )
 
-    title_text = ax.set_title("Эпоха: 0", color="white", fontsize=12)
+    prefix_label = "Дерево: " if is_gbdt else "Эпоха: "
+    title_text = ax.set_title(f"{prefix_label}0", color="white", fontsize=12)
+
     ax.legend(loc="upper right", facecolor="#1e1e1e", edgecolor="none")
     ax.grid(True, alpha=0.15)
     plt.tight_layout()
 
     def update(frame: EpochState):
-        title_text.set_text(f"Эпоха: {frame.epoch}")
+        title_text.set_text(f"{prefix_label}{frame.epoch}")
 
-        for i, line_n in enumerate(neuron_lines):
-            line_n.set_data(frame.x_grid, frame.neuron_outputs[i])
+        for i, line_elem in enumerate(elem_lines):
+            if i < frame.element_outputs.shape[0]:
+                line_elem.set_data(frame.x_grid, frame.element_outputs[i])
 
         y_tr = np.where(frame.train_mask, frame.y_pred, np.nan)
         y_val = np.where(~frame.train_mask, frame.y_pred, np.nan)
@@ -248,7 +255,7 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
         line_train.set_data(frame.x_grid, y_tr)
         line_val.set_data(frame.x_grid, y_val)
 
-        return [title_text, line_train, line_val, *neuron_lines]
+        return [title_text, line_train, line_val, *elem_lines]
 
     anim = animation.FuncAnimation(
         fig, update, frames=frames_data, blit=True, interval=1000 // fps
@@ -270,87 +277,88 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
     return gif_bytes
 
 
+# ================ LEGACY ================
 # отрисовка графика
-def create_figure(frame: EpochState) -> go.Figure:
-    """Делает figure из стейта эпохи сетки"""
-    fig = go.Figure()
+# def create_figure(frame: EpochState) -> go.Figure:
+#     """Делает figure из стейта эпохи сетки"""
+#     fig = go.Figure()
 
-    y_min_val, y_max_val = frame.y_target.min(), frame.y_target.max()
-    margin = (y_max_val - y_min_val) * 0.5 + 0.5
-    y_range = [y_min_val - margin, y_max_val + margin]
+#     y_min_val, y_max_val = frame.y_target.min(), frame.y_target.max()
+#     margin = (y_max_val - y_min_val) * 0.5 + 0.5
+#     y_range = [y_min_val - margin, y_max_val + margin]
 
-    # fig.add_vrect(
-    #     x0=frame.x_grid[frame.train_mask].min(),
-    #     x1=frame.x_grid[frame.train_mask].max(),
-    #     fillcolor="rgba(255, 255, 255, 0.08)",
-    #     line={"color": "rgba(255, 255, 255, 0.3)", "width": 1, "dash": "dot"},
-    #     annotation_text=" Зона обучения",
-    #     annotation_position="top left",
-    #     annotation_font={"color": "white", "size": 12},
-    # )
+#     # fig.add_vrect(
+#     #     x0=frame.x_grid[frame.train_mask].min(),
+#     #     x1=frame.x_grid[frame.train_mask].max(),
+#     #     fillcolor="rgba(255, 255, 255, 0.08)",
+#     #     line={"color": "rgba(255, 255, 255, 0.3)", "width": 1, "dash": "dot"},
+#     #     annotation_text=" Зона обучения",
+#     #     annotation_position="top left",
+#     #     annotation_font={"color": "white", "size": 12},
+#     # )
 
-    for i in range(frame.neuron_outputs.shape[0]):
-        fig.add_trace(
-            go.Scatter(
-                x=frame.x_grid,
-                y=frame.neuron_outputs[i],
-                mode="lines",
-                name=f"Нейрон {i + 1}",
-                line={"width": 1},
-                opacity=0.4,
-                showlegend=False,
-            )
-        )
+#     for i in range(frame.element_outputs.shape[0]):
+#         fig.add_trace(
+#             go.Scatter(
+#                 x=frame.x_grid,
+#                 y=frame.element_outputs[i],
+#                 mode="lines",
+#                 name=f"Нейрон {i + 1}",
+#                 line={"width": 1},
+#                 opacity=0.4,
+#                 showlegend=False,
+#             )
+#         )
 
-    fig.add_trace(
-        go.Scatter(
-            x=frame.x_grid,
-            y=frame.y_target,
-            mode="lines",
-            name="Целевая f(x)",
-            line={"color": "#FFFFFF", "width": 2.5, "dash": "dash"},
-        )
-    )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=frame.x_grid,
+#             y=frame.y_target,
+#             mode="lines",
+#             name="Целевая f(x)",
+#             line={"color": "#FFFFFF", "width": 2.5, "dash": "dash"},
+#         )
+#     )
 
-    y_train_plot = np.where(frame.train_mask, frame.y_pred, np.nan)
-    y_val_plot = np.where(~frame.train_mask, frame.y_pred, np.nan)
+#     y_train_plot = np.where(frame.train_mask, frame.y_pred, np.nan)
+#     y_val_plot = np.where(~frame.train_mask, frame.y_pred, np.nan)
 
-    fig.add_trace(
-        go.Scatter(
-            x=frame.x_grid,
-            y=y_train_plot,
-            mode="lines",
-            name="Предсказание (Train)",
-            line={"color": "#00D2FF", "width": 4},
-        )
-    )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=frame.x_grid,
+#             y=y_train_plot,
+#             mode="lines",
+#             name="Предсказание (Train)",
+#             line={"color": "#00D2FF", "width": 4},
+#         )
+#     )
 
-    if np.any(~frame.train_mask):
-        fig.add_trace(
-            go.Scatter(
-                x=frame.x_grid,
-                y=y_val_plot,
-                mode="lines",
-                name="Экстраполяция (Val)",
-                line={"color": "#FF4B4B", "width": 3, "dash": "dot"},
-            )
-        )
+#     if np.any(~frame.train_mask):
+#         fig.add_trace(
+#             go.Scatter(
+#                 x=frame.x_grid,
+#                 y=y_val_plot,
+#                 mode="lines",
+#                 name="Экстраполяция (Val)",
+#                 line={"color": "#FF4B4B", "width": 3, "dash": "dot"},
+#             )
+#         )
 
-    fig.update_layout(
-        title={"text": f"Эпоха: {frame.epoch}", "font": {"size": 20, "color": "white"}},
-        xaxis_title="x",
-        yaxis_title="y",
-        yaxis={"range": y_range},  # Зажимаем Y в адекватные рамки
-        hovermode="x unified",
-        height=620,
-        margin={"l": 20, "r": 20, "t": 50, "b": 20},
-        legend={
-            "yanchor": "top",
-            "y": 0.99,
-            "xanchor": "right",
-            "x": 0.99,
-            "bgcolor": "rgba(0,0,0,0.5)",
-        },
-    )
+#     fig.update_layout(
+#         title={"text": f"Эпоха: {frame.epoch}", "font": {"size": 20, "color": "white"}},
+#         xaxis_title="x",
+#         yaxis_title="y",
+#         yaxis={"range": y_range},  # Зажимаем Y в адекватные рамки
+#         hovermode="x unified",
+#         height=620,
+#         margin={"l": 20, "r": 20, "t": 50, "b": 20},
+#         legend={
+#             "yanchor": "top",
+#             "y": 0.99,
+#             "xanchor": "right",
+#             "x": 0.99,
+#             "bgcolor": "rgba(0,0,0,0.5)",
+#         },
+#     )
 
-    return fig
+#     return fig
