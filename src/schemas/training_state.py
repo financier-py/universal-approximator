@@ -1,6 +1,8 @@
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.schemas.experiment_params import ModelType
+
 
 class EpochState(BaseModel):
     """
@@ -10,7 +12,11 @@ class EpochState(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    epoch: int = Field(..., ge=0, description="Номер текущей эпохи")
+    model_type: ModelType = Field(
+        default="nn", description="Тип модели, сформировавший кадр"
+    )
+
+    epoch: int = Field(..., ge=0, description="Номер текущей эпохи или дерева")
     loss_train: float = Field(..., description="RMSE на обучающем интервале")
     loss_val: float = Field(..., description="RMSE вне обучающего интервала")
 
@@ -24,8 +30,14 @@ class EpochState(BaseModel):
     y_pred: np.ndarray = Field(
         ..., description="Предсказания модели на x_grid (1D array)"
     )
-    neuron_outputs: np.ndarray = Field(
-        ..., description="Вклад каждого из N нейронов на сетке x_grid (2D array)"
+    element_outputs: np.ndarray = Field(
+        ...,
+        description=(
+            "Вклады базовых элементов на x_grid\n"
+            "Для NN: (N, K) - вклады каждого из N нейронов\n"
+            "Для GBDT current: (1, K) - последнее дерево без масштабирования\n"
+            "Для GBDT history: (M_history, K) - сумма вкладов всех пред. деревьев"
+        ),
     )
     train_mask: np.ndarray = Field(
         ...,
