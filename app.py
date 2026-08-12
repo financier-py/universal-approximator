@@ -212,7 +212,8 @@ if "all_frames" in st.session_state:
     with st.expander("📥 Скачать анимацию в формате GIF"):
         if st.button("Сгенерировать GIF"):
             with st.spinner("Создаём GIF-файл..."):
-                gif_bytes = export_frames_to_gif(all_frames, fps=20)
+                calculated_fps = max(1, 1000 // frame_duration)
+                gif_bytes = export_frames_to_gif(all_frames, fps=calculated_fps)
                 st.session_state["gif_bytes"] = gif_bytes
 
         if "gif_bytes" in st.session_state:
