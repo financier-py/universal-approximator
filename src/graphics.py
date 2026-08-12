@@ -10,12 +10,12 @@ from src.schemas.training_state import EpochState
 
 
 def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.Figure:
-    """Создает анимированный график как гифка"""
+    """Создает анимированный график Plotly с корректной синхронизацией треков."""
     if not frames_data:
         return go.Figure()
 
     first_frame = frames_data[0]
-    is_gbdt = first_frame.model_type == "gbdt"
+    is_gdbt = first_frame.model_type == "gdbt"
 
     y_min_val, y_max_val = first_frame.y_target.min(), first_frame.y_target.max()
     margin = (y_max_val - y_min_val) * 0.5 + 0.5
@@ -23,7 +23,7 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
 
     base_traces = []
 
-    # линии базовых элементов (нейронов или деревьев)
+    # 1. линии базовых элементов
     for i in range(first_frame.element_outputs.shape[0]):
         base_traces.append(
             go.Scatter(
@@ -33,9 +33,11 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
                 line={"width": 1},
                 opacity=0.35,
                 showlegend=False,
+                hoverinfo="skip",
             )
         )
 
+    # 2. целевая функция
     base_traces.append(
         go.Scatter(
             x=first_frame.x_grid,
@@ -46,7 +48,7 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
         )
     )
 
-    # train предсказание
+    # 3. предсказание (Train)
     y_tr_0 = np.where(first_frame.train_mask, first_frame.y_pred, np.nan)
     base_traces.append(
         go.Scatter(
@@ -58,8 +60,9 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
         )
     )
 
-    # val предсказание
-    if np.any(~first_frame.train_mask):
+    # 4. экстраполяция (Val)
+    has_val = np.any(~first_frame.train_mask)
+    if has_val:
         y_val_0 = np.where(~first_frame.train_mask, first_frame.y_pred, np.nan)
         base_traces.append(
             go.Scatter(
@@ -74,18 +77,22 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
     plotly_frames = []
     slider_steps = []
 
-    for f_idx, frame in enumerate(frames_data):
+    for frame in frames_data:
         frame_traces = []
 
+        # 1. деревья или нейроны
         for i in range(frame.element_outputs.shape[0]):
             frame_traces.append(go.Scatter(x=frame.x_grid, y=frame.element_outputs[i]))
 
+        # 2. целевая функция
         frame_traces.append(go.Scatter(x=frame.x_grid, y=frame.y_target))
 
+        # 3. предсказание (Train)
         y_tr = np.where(frame.train_mask, frame.y_pred, np.nan)
         frame_traces.append(go.Scatter(x=frame.x_grid, y=y_tr))
 
-        if np.any(~frame.train_mask):
+        # 4. экстраполяция (Val)
+        if has_val:
             y_val = np.where(~frame.train_mask, frame.y_pred, np.nan)
             frame_traces.append(go.Scatter(x=frame.x_grid, y=y_val))
 
@@ -119,7 +126,7 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
         annotation_font={"color": "white", "size": 12},
     )
 
-    prefix_label = "Дерево: " if is_gbdt else "Эпоха: "
+    prefix_label = "Дерево: " if is_gdbt else "Эпоха: "
 
     fig.update_layout(
         title={
@@ -192,12 +199,12 @@ def create_animated_figure(frames_data: list[EpochState], duration: int) -> go.F
 
 
 def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
-    """Генерирует GIF-файл из массива кадров через Matplotlib."""
+    """генерит гифку из массива кадров через матплотлиб"""
     if not frames_data:
         return b""
 
     first_frame = frames_data[0]
-    is_gbdt = first_frame.model_type == "gbdt"
+    is_gdbt = first_frame.model_type == "gdbt"
 
     plt.style.use("dark_background")
     fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
@@ -224,7 +231,6 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
         label="Целевая f(x)",
     )
 
-    # Линии базовых элементов без labels, чтобы не выводить их в легенду
     elem_lines = []
     for _ in range(first_frame.element_outputs.shape[0]):
         (line_elem,) = ax.plot([], [], linewidth=1, alpha=0.35)
@@ -235,7 +241,7 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
         [], [], color="#FF4B4B", linewidth=2, linestyle=":", label="Val"
     )
 
-    prefix_label = "Дерево: " if is_gbdt else "Эпоха: "
+    prefix_label = "Дерево: " if is_gdbt else "Эпоха: "
     title_text = ax.set_title(f"{prefix_label}0", color="white", fontsize=12)
 
     ax.legend(loc="upper right", facecolor="#1e1e1e", edgecolor="none")
