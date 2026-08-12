@@ -20,12 +20,11 @@ class GDBTTrainer:
 
     def train(self):
         """Запускает бустинг. Отдает кадры анимации через yield"""
-        # достаем данные для sklearn
         x_train = self.data.x_grid[self.data.train_mask].reshape(-1, 1)
         y_train = self.data.y_target[self.data.train_mask]
         x_all = self.data.x_grid.reshape(-1, 1)
 
-        # инициализируем модель + обучаем
+        # инициализируем модельку + обучаем
         gb = GradientBoostingRegressor(
             n_estimators=self.params.n_estimators,
             max_depth=self.params.max_depth,
@@ -39,18 +38,24 @@ class GDBTTrainer:
         f_0_train = gb.init_.predict(x_train)  # type: ignore
         f_0_grid = gb.init_.predict(x_all)  # type: ignore
 
-        history_contribs = []
-
-        # нулевой кадр
-        yield self._create_frame(
-            epoch=0,
-            y_pred_grid=f_0_grid,
-            element_outputs=np.zeros((1, len(self.data.x_grid))),
-            y_pred_train=f_0_train,
-        )
-
+        # нулевой кадр: накопленное предсказание = F_0
         y_pred_train_accum = f_0_train.copy()
         y_pred_grid_accum = f_0_grid.copy()
+
+        # статичная матрица выходов элементов на весь процесс
+        max_elements = (
+            1 if self.params.gdbt_view_mode == "current" else self.params.n_estimators
+        )
+        current_element_outputs = np.full((max_elements, len(self.data.x_grid)), np.nan)
+
+        yield self._create_frame(
+            epoch=0,
+            y_pred_grid=y_pred_grid_accum.copy(),
+            element_outputs=current_element_outputs.copy(),
+            y_pred_train=y_pred_train_accum.copy(),
+        )
+
+        history_contribs = []
 
         for m, tree_stage in enumerate(gb.estimators_, start=1):
             tree = tree_stage[0]
@@ -58,25 +63,27 @@ class GDBTTrainer:
             tree_contrib_train = self.params.learning_rate * tree.predict(x_train)
             tree_contrib_grid = self.params.learning_rate * tree.predict(x_all)
 
+            # накапливаем предсказание с каждым деревом
             y_pred_train_accum += tree_contrib_train
             y_pred_grid_accum += tree_contrib_grid
 
             if self.params.gdbt_view_mode == "current":
-                # одно текущее дерево в ОБЫЧНОМ масштабе
                 raw_tree_pred = tree.predict(x_all)
-                element_outputs = raw_tree_pred.reshape(1, -1)
+                current_element_outputs = raw_tree_pred.reshape(1, -1)
             else:
-                # накоп история деревьев
+                # накапливаем вклады прошлых деревьев
                 history_contribs.append(tree_contrib_grid)
-                element_outputs = np.array(history_contribs)
+                current_element_outputs[: len(history_contribs)] = np.array(
+                    history_contribs
+                )
 
-            # отдаем кадр в UI
+            # отдаем кадр в UI по шагам
             if m % self.params.yield_every == 0 or m == self.params.n_estimators:
                 yield self._create_frame(
                     epoch=m,
-                    y_pred_grid=y_pred_grid_accum,
-                    element_outputs=element_outputs,
-                    y_pred_train=y_pred_train_accum,
+                    y_pred_grid=y_pred_grid_accum.copy(),
+                    element_outputs=current_element_outputs.copy(),
+                    y_pred_train=y_pred_train_accum.copy(),
                 )
 
     def _create_frame(
@@ -86,7 +93,6 @@ class GDBTTrainer:
         element_outputs: np.ndarray,
         y_pred_train: np.ndarray,
     ) -> EpochState:
-        """Вспомогательный метод для расчета RMSE и форматирования кадра"""
         y_train_target = self.data.y_target[self.data.train_mask]
 
         # RMSE Train
