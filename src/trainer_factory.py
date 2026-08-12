@@ -6,8 +6,8 @@ from src.schemas.experiment_params import ExperimentParams
 
 def get_trainer(params: ExperimentParams, data: PreparedData):
     """
-    Фабрика для создания трейнера в зависимости от выбранного типа модели (NN или GBDT)
+    Фабрика для создания трейнера в зависимости от выбранного типа модели (NN или gdbt)
     """
-    if params.model_type == "gbdt":
+    if params.model_type == "gdbt":
         return GDBTTrainer(params, data)
     return NNTrainer(params, data)
