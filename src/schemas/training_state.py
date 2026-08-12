@@ -35,8 +35,8 @@ class EpochState(BaseModel):
         description=(
             "Вклады базовых элементов на x_grid\n"
             "Для NN: (N, K) - вклады каждого из N нейронов\n"
-            "Для GBDT current: (1, K) - последнее дерево без масштабирования\n"
-            "Для GBDT history: (M_history, K) - сумма вкладов всех пред. деревьев"
+            "Для GDBT current: (1, K) - последнее дерево без масштабирования\n"
+            "Для GDBT history: (M_history, K) - сумма вкладов всех пред. деревьев"
         ),
     )
     train_mask: np.ndarray = Field(
