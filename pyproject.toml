@@ -1,7 +1,7 @@
 [project]
 name = "universal-approximator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Interactive demo of the universal approximation theorem: watch an MLP or gradient boosting fit any f(x)"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
