@@ -264,7 +264,7 @@ def export_frames_to_gif(frames_data: list[EpochState], fps: int = 20) -> bytes:
         return [title_text, line_train, line_val, *elem_lines]
 
     anim = animation.FuncAnimation(
-        fig, update, frames=frames_data, blit=True, interval=1000 // fps
+        fig, update, frames=frames_data, blit=False, interval=1000 // fps
     )
 
     with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp_file:
