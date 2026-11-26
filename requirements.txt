@@ -6,3 +6,4 @@ streamlit
 matplotlib
 pillow
 pydantic
+scikit-learn
